@@ -1,0 +1,78 @@
+******************************************************************
+* ABSP-S       v1.03.9109.14  Audio-Byte Sound Player : Assembly *
+******************************************************************
+*                                                                *
+* Source Published: 05/09/2024 garyopa.com via TI99.AtariAge.com *
+*                                                                *
+* Copyrighted 1991 by Oasis Pensive Abacutors and WHTechnologies *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+       TITL 'AUDIO-BYTE SOUND PLAYER'
+       IDT  'ABSP1.03'
+       DEF  SFIRST,START,SLAST
+       AORG >2000
+ 
+SCAN   EQU  >000E             Console ROM addr. for Key Scan
+ 
+BEEP   EQU  >0034             GROM address of BEEP sound
+HONK   EQU  >0036             GROM address of HONK sound
+ 
+VDPBUF EQU  >1000             VDP read record buffer
+VDPPAB EQU  >1100             VDP file PAB area
+ 
+PIOCRU EQU  >1300             CRU address of first RS232/PIO card
+PIORW  EQU  >5000             DSR memory-mapped port for "TI" PIO
+ 
+GENMAP EQU  >8000             Geneve Memory Mapper Ports
+ 
+PROGWS EQU  >8300             ABSP program workspace
+FSTPLY EQU  >8322             Faster player program moved to PAD
+DSRNAM EQU  >8354
+POINTR EQU  >8356
+KEYADR EQU  >8374             Type of keyboard mode
+KEYVAL EQU  >8375             Returned value of key pressed
+TIMER  EQU  >8379             60hz VDP timer counter
+STATUS EQU  >837C             Not ZERO when new key is pressed
+SP$ROM EQU  >83D0
+VDPR1  EQU  >83D4             CPU copy of what's in VDP R1
+SNDNUM EQU  >83CE             Number of sound bytes left
+GPLWS  EQU  >83E0             Workspace for outside programs
+ 
+SOUND  EQU  >8400             Memory-Mapped location of TI SOUND CHIP
+ 
+VDPRD  EQU  >8800             VDP Read data port
+VDPSTA EQU  >8802             VDP Status port (READ-ONLY)
+VDPWD  EQU  >8C00             VDP Write Data port
+VDPWA  EQU  >8C02             VDP Write Address port
+VDPWP  EQU  >8C04             VDP Write Pallette port (9938/58)
+VDPWC  EQU  >8C06             VDP Write Control port  (9938/58)
+ 
+SNDVDP EQU  >0000             Sound buffer pointer when VDP mode used
+SNDRAM EQU  >6000             Sound buffer pointer when RAMBO mode used
+SND24K EQU  >A000             Sound buffer pointer when 24K mode used
+*
+* Main source files to be assembled
+*
+SFIRST COPY "DSK6.ABSP-MAIN"  Main source code for title screen, etc.
+       COPY "DSK6.ABSP-SUBS"  Common sub-programs found in this program
+       COPY "DSK6.ABSP-BLWP"  Normal BLWP util's used by this program
+       COPY "DSK6.ABSP-DATA"  DATA/TEXT/BYTE's used by this program
+       EVEN
+SLAST  EQU  $
+*
+* Buffers used by this program
+*
+NAMBUF BSS  10                Name buffer for DSRLNK
+DSRWS  BSS  32                Workspace for DSRLNK
+UTILWS BSS  32                Workspace for BLWP programs
+KEYBWS BSS  32                Workspace for KB
+CPUBUF BSS  128               CPU buffer for moving records around
+PADBUF BSS  192               PAD buffer for use by high-speed player!
+PLYTBL BSS  3072              Player table: value1,value2,length,...>0000
+*
+* No More Binary Data
+*
+       END

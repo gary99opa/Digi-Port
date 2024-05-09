@@ -1,0 +1,400 @@
+******************************************************************
+* ABSP-MAIN    v1.03.9109.14  Main setup of sound player, etc.   *
+******************************************************************
+*                                                                *
+* Source Published: 05/09/2024 garyopa.com via TI99.AtariAge.com *
+*                                                                *
+* Copyrighted 1991 by Oasis Pensive Abacutors and WHTechnologies *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+*
+* Display TITLE screen, and get memory type!
+*
+START  LIMI 0                 Turn off all ints.
+       LWPI PROGWS            Load up our very own workspace
+       MOVB @THREE,@KEYADR    Switch keyboard to upper-case only
+       LI   R12,PIOCRU        Load R12 with CRU address of the RS232/PIO
+       LI   R13,PIORW         Load R13 with DSR port address for PIO use
+       LI   R14,VDPRD         Load R14 with VDP read data port
+       LI   R15,VDPWA         Load R15 with VDP write address port
+       LI   R0,>0BF8          Point to character #127 in VDP
+       LI   R1,CURPAT         Point to the "cursor pattern".
+       LI   R2,8              8 bytes in a character pattern
+       BLWP @VMBW             Write the new character to VDP
+SAGAIN BLWP @CLEAR            Clear the whole screen
+       DATA 0,768
+       BLWP @WRTSCR           Display the "title" screen
+       DATA TITLE
+       BL   @MENU             Run title screen menu!
+       DATA TITMNU
+*
+* #1 24K CPU RAM selected
+*
+MNU24K MOV  @SND24K,R1        Check if high memory is working?
+       INV  @SND24K           *
+       C    @SND24K,R1        *
+       JEQ  NORAM             If EQUAL, its not there, so send ERROR!
+       LI   R0,1              Load MEMTYP with type selected #1
+       MOV  R0,@MEMTYP        *
+       MOV  R0,@MAXPAG        Only one page of memory to fill
+       LI   R0,192            Number of records per page when 24K mode
+       MOV  R0,@PAGSIZ        *
+       B    @LDSCR            CPU RAM enabled, so jump to load screen!
+*
+* #2 128K/192K VDP RAM selected
+*
+MNUVDP LI   R0,2              ******* Needs more work, add check for
+       MOV  R0,@MEMTYP                128K and check for 192K of RAM
+       LI   R0,11             Number of pages when 192K of VDP RAM
+       MOV  R0,@MAXPAG        *
+       LI   R0,128            Number of records per page when 192K mode
+       MOV  R0,@PAGSIZ        *
+       B    @LDSCR            VDP RAM enabled, so jump to load screen!
+*
+* #3 RAMBO memory selected
+*
+MNURAM LI   R0,VDPPAB+64      Point to safe area in VDP for RAMBO PAB
+       LI   R1,CALLBO         Point to the RAMBO PAB in CPU memory
+       LI   R2,2              Length of the PAB to write to VDP
+       BLWP @VMBW             Write the PAB to VDP
+       CLR  @>834A            Clearing both >834A & >834C will make
+       CLR  @>834C            RAMBO tell us the avail. pages in >834A
+       MOV  R0,@POINTR        Make sure DSR knows where the PAB is!
+       BLWP @DSRLNK           RAMBO, HOW MANY PAGES ARE AVAIL.?
+       DATA >A
+       MOV  @>8350,R0         Check for errors? (ZERO if none!)
+       JNE  NORAM             Error!, jump to the "no ram" found message!
+       MOV  @>834A,@MAXPAG    Put number of pages avail. into MAXPAG
+       JEQ  NORAM             If EQ, RAMBO there but no memory avail!
+       LI   R0,3              All works, so switch to type #3 in MEMTYP
+       MOV  R0,@MEMTYP        *
+       LI   R0,64             Number of records per page when RAMBO mode
+       MOV  R0,@PAGSIZ        *
+       B    @LDSCR            RAMBO enabled, so jump to load screen!
+*
+* Error message, if 1/2/3 not avail.
+*
+NORAM  BLWP @WRTSCR           Selected RAM was no found, display error!
+       DATA RAMERR            *
+NORAM1 BLWP @KSCAN            Wait for a key press
+       MOVB @STATUS,R0        *
+       JEQ  NORAM1            *
+       B    @SAGAIN           Got one, so return to the title screen!
+*
+* Catalog/Load file screen
+*
+LDSCR  BLWP @CLEAR            Clear the whole screen
+       DATA 0,768             *
+       BLWP @WRTSCR           Display the "loader" screen
+       DATA CATSCR
+LDSCR1 BLWP @KB               Get "input" for the filename/path
+       DATA 417,FILNAM,>051E
+       MOV  R0,@FILLEN        Store the length in the file's PAB
+       JEQ  LDSCR1
+*
+* Open up sound file
+*
+FOPEN  LI   R0,VDPPAB         Point to the VDP PAB buffer area
+       LI   R1,FILPAB         Point to the file PAB in program
+       LI   R2,64             Max. length of any possible PAB!
+       BLWP @VMBW             Write the file PAB to VDP memory
+       MOV  @FILPNT,@POINTR   Make sure DSR knows where PAB is
+       BLWP @DSRLNK           OPEN THE SOUND FILE, check for errors?
+       DATA 8                 *
+       JNE  FFIRST            None, so branch to first record read!
+       BLWP @WRTSCR           Yep, so display "open" error message
+       DATA OPNERR            *
+FOPEN1 BLWP @KSCAN            Scan the key board
+       MOVB @STATUS,R0        Check if a new key was pressed
+       JEQ  FOPEN1            Nope, so wait for a new key!
+       B    @LDSCR            Return to the "loader" screen
+*
+* Read in the first record of the file
+*
+FFIRST BLWP @WRTSCR           Display the "reading" message
+       DATA READ
+       LI   R0,VDPPAB         Point to the file PAB in VDP memory
+       LI   R1,>0200          Load R1 with READ record DSR opcode
+       BLWP @VSBW             Switch the file PAB to the new mode
+       MOV  @FILPNT,@POINTR   Make sure the DSR knows where PAB is
+       BLWP @DSRLNK           READ IN THE FIRST RECORD, check for errors?
+       DATA 8                 *
+       JNE  FTYPE             None, so branch to file format selecter
+FERROR BLWP @WRTSCR           Yep, so display "read" error message
+       DATA RADERR            *
+FFIRSU BLWP @KSCAN            Scan the key board
+       MOVB @STATUS,R0        Check if a new key was pressed
+       JEQ  FFIRSU            Nope, so wait for a new key!
+       B    @LDSCR            Return to the "loader" screen
+*
+* Find type of file, adjust first record as need be, etc.
+*
+FTYPE  MOV  @MAXPAG,R10       R10 = Number of pages to fill
+       MOV  @PAGSIZ,R9        R9  = Number of records in each page
+       LI   R8,VDPTBL         R8  = Point to VDP R14/R45 table
+       LI   R7,PLYTBL         R7  = Point to the "player" table
+       CLR  R6                R6  = Index pointer into memory block
+       LI   R0,VDPBUF         Point to the VDP read record buffer
+       LI   R1,CPUBUF         Point to the CPU move record buffer
+       LI   R2,128            Length of first record just read
+       BLWP @VMBR             Write the record to the temp buffer
+       LI   R0,FMTTBL         Point to the file format search table
+FTYPE1 MOV  *R0+,R1           Get address of data to check in header
+       JEQ  FTYPE3            If ZERO, then format not found, EXIT!
+       MOV  *R0+,@PLRFLG      Get polar or de-pol flag setting.
+       MOV  *R0+,R2           Get length of file header to check
+       MOV  *R0+,R3           Get offset into header to start look at
+       MOV  *R0+,R4           Get default delay value for this format
+       MOV  *R0+,R5           Get offset into header of data start!
+       MOV  *R0+,@DTYPE       Get pointer to human text of format!
+       AI   R3,CPUBUF         Point to the start of the header look!
+FTYPE2 CB   *R1+,*R3+         Check if bytes in header match?
+       JNE  FTYPE1            If NOT, then check next file format
+       DEC  R2                Yep, so check if finished?
+       JNE  FTYPE2            Nope, so compar more bytes!
+       MOV  R4,@DELAY         MATCHED!, so change delay value
+       LI   R1,CPUBUF         Point to the first record buffer
+       A    R5,R1             Add data offset start location
+       LI   R2,128            Max. length of first record
+       S    R5,R2             Minus amount of non-data part
+       JEQ  FREAD             Nothing left, so start a fresh read
+       JMP  FREAD2            Something left, so use it!!!!
+FTYPE3 CLR  @PLRFLG           Default to non-polar type files
+       LI   R0,NOTTXT         NOT FOUND!, point to "not" text string
+       MOV  R0,@DTYPE         Tell "player" screen we didn't find it!
+       LI   R1,CPUBUF         Point to the start of the first record
+       LI   R2,128            Use all 128 bytes of the first record!
+       JMP  FREAD2            Jump over next read, and use first rec.
+*
+* Read in each record plus de-pol if need be
+*
+FREAD  MOV  @FILPNT,@POINTR   Make sure DSR knows where to look!!
+       BLWP @DSRLNK           READ IN A RECORD, check for errors?
+       DATA 8
+       JNE  FREAD1            No errors, so jump to get data just read!
+       CB   R0,@EOFERR        Error!, check if "end of file" error
+       JEQ  FREAD5            Yep, so switch to the "player" screen
+       B    @FERROR           REAL ERROR!, so jump to "error" display
+FREAD1 LI   R0,VDPBUF         Point to the VDP read record buffer
+       LI   R1,CPUBUF         Point to the CPU move record buffer
+       LI   R2,128            Length of each record per read
+       BLWP @VMBR             Write the record to the temp space
+FREAD2 MOV  @PLRFLG,R0        Check if de-pol needed?
+       JEQ  FREAD4            Nope, so don't do any thing special
+       MOV  R2,R3             Save length of this record in R2
+FREAD3 SB   @DEVAL1,*R1       Subtract 127 from each byte (step 1)
+       AB   @DEVAL2,*R1+      Add 255 to each byte (step 2)
+       DEC  R3                Check if finished with this record?
+       JNE  FREAD3            Nope, so de-pol some more bytes!
+       S    R2,R1             Resets pointers back for write below
+FREAD4 MOV  @MEMTYP,R0        Fetch type of memory in use
+       CI   R0,1              Check if 24K enabled
+       JEQ  FLD24K            Yep, so load record into the 24K
+       CI   R0,2              Check if VDP enabled
+       JEQ  FLDVDP            Yep, so load record into the VDP
+       CI   R0,3              Check if RAMBO enabled
+       JEQ  FLDRAM            Yep, so load record into RAMBO
+       B    @QUIT             ERROR!, exit to the TI Title Screen
+FREAD5 CLR  R2                EOF! so make length of record ZERO!
+       JMP  FREAD4            Jump up and finish off the tables!
+*
+* Load read record into 24K memory
+*
+FLD24K MOV  R2,R3             Save R2 for EOF check below!
+       JEQ  FLD24M            EOF!, so skip over moving the record!
+FLD24L MOVB *R1+,@SND24K(R6)  Move a byte of this record into 24K
+       INC  R6                Point to the next byte location
+       DEC  R3                Check if finished
+       JNE  FLD24L            Nope, so move some more
+       DEC  R9                Check if page is full?
+       JNE  FREAD             Nope, so read in another record
+       MOV  @PAGSIZ,R9        Reset next page to empty!
+FLD24M MOV  R6,*R7+           Load amount used into PLYTBL
+       LI   R0,SND24K         Point to top address of the 24K block
+       MOV  R0,*R7+           Load top address of this page into PLYTBL
+       MOV  R2,R2             Check if EOF mode?
+       JEQ  FLD24N            Yep, so exit to "player" screen
+       CLR  R6                Reset amount loaded in a page!!
+       DEC  R10               Check if all pages full?
+       JNE  FREAD             Nope, so read in another record
+FLD24N B    @FDONE            OVER!, so branch to close file section
+*
+* Load read record into VDP memory
+*
+FLDVDP MOV  R2,R2             Check if EOF mode?
+       JEQ  FLDVDO            Yep, so skip over moving the record!
+       MOVB *R8+,*R15         Write out VDP R14
+       MOVB *R8+,*R15
+       MOVB *R8+,*R15         Write out VDP R45
+       MOVB *R8+,*R15
+       AI   R8,-4             Back up for next record loop!
+       MOV  R6,R0             Point to the current position in VDP
+       BLWP @VMBW             Write the record to the VDP
+       BL   @PGZERO           Return to normal page 0 of VDP memory
+       A    R2,R6             Move 16K block pointer up a record
+       DEC  R9                Check if page is full?
+       JNE  FREAD             Nope, so read in another record
+       MOV  @PAGSIZ,R9        Reset next page to empty!
+FLDVDO MOV  R6,*R7+           Load amount used into PLYTBL
+       MOVB *R8+,*R7+         Write out VDP R14
+       MOVB *R8+,*R7+
+       MOVB *R8+,*R7+         Write out VDP R45
+       MOVB *R8+,*R7+
+       MOV  R2,R2             Check if EOF mode?
+       JEQ  FLDVDQ            Yep, so exit to "player" screen
+       CLR  R6                Reset amount loaded in a page!!
+       DEC  R10               Check if all pages full?
+       JNE  FREAD             Nope, so read in another record
+FLDVDQ B    @FDONE            OVER!, so branch to close file section
+*
+* Load read record into RAMBO memory
+*
+FLDRAM MOV  R1,R4             Save R1 for move of record below
+       MOV  R2,R5             Save R2 for move of record below
+       MOV  R10,@>834C        Pass page wanted to RAMBO OS
+       LI   R0,VDPPAB+64      Point to the safe area in VDP for PAB
+       LI   R1,CALLBO         Point to the 2byte RAMBO PAB in CPU
+       LI   R2,2              Length of the PAB to write to VDP
+       BLWP @VMBW             Write the PAB to VDP memory
+       MOV  R0,@POINTR        Make sure DSR knows where the PAB is
+       BLWP @DSRLNK           SELECT A RAMBO PAGE
+       DATA >A                *
+       MOV  @>8350,R0         Check for errors?
+       JEQ  FLDRAN            Nope, so skip over exit!
+       B    @QUIT             ERROR!, exit to the TI title screen
+FLDRAN MOV  R5,R2             Save R2 for EOF check below
+       JEQ  FLDRAP            EOF!, so skip over moving of record!
+FLDRAO MOVB *R4+,@SNDRAM(R6)  Move a byte of this record into 24K
+       INC  R6                Point to the next byte location
+       DEC  R5                Check if finished
+       JNE  FLDRAO            Nope, so move some more
+       DEC  R9                Check if page is full?
+       JNE  FLDRAQ            Nope, so read in another record
+       MOV  @PAGSIZ,R9        Reset next page to empty!
+FLDRAP MOV  R6,*R7+           Load amount used into PLYTBL
+       MOV  @>834A,*R7+       Load CRU addr. of this page into PLYTBL
+       MOV  @>834C,*R7+       Load CRU value of this page into PLYTBL
+       MOV  R2,R2             Check if EOF mode?
+       JEQ  FDONE             Yep, so exit to "player" screen
+       CLR  R6                Reset amount loaded in a page!!
+       DEC  R10               Check if all pages full?
+       JEQ  FDONE             Yep, so switch to done part
+FLDRAQ B    @FREAD            Nope, so go back and read in another record
+*
+* If over size file, close it else just add EOF marker
+*
+FDONE  LI   R0,VDPPAB         Point to the file PAB in VDP memory
+       LI   R1,>0100          Load R1 with CLOSE! file DSR opcode
+       BLWP @VSBW             Switch the file PAB to the new mode
+       MOV  @FILPNT,@POINTR   Make sure DSR knows where to look!!
+       BLWP @DSRLNK           CLOSE THE FILE!
+       DATA 8
+       CLR  *R7+              Mark the end of the PLYTBL!
+*
+* Display "player" screen, and command line (C,L,Q,P,S)
+*
+PLYSCR BLWP @CLEAR            Clear the whole screen
+       DATA 0,768             *
+       BLWP @WRTSCR           Display "player" screen
+       DATA RUNSCR            *
+       BL   @MENU             Run the "player" menu
+       DATA PLYMNU
+*
+* #1 'D' Change Delay
+*
+CHGDLY BLWP @KB               Get "input" for the byte delayer
+       DATA 413,NUMBUF,>0002
+       MOV  R0,@CHGDLZ        Pass input length to the ASCNUM program
+       JEQ  CHGDLY            If no input, go back and get some!
+       BLWP @ASCNUM           Convert delay ASCII into a number
+       DATA NUMBUF            Point to the CPU buffer of inputed delay
+CHGDLZ DATA >0000             Value plugged in by MOV line above
+       JNE  CHGDLY            If errors, jump back to the keyboard input
+       CI   R6,80             Check if delay higher than 64
+       JH   CHGDLY            Yep, so don't use it, fetch new value!
+       MOV  R6,@DELAY         Store the "delay" into a safe area
+       B    @PLYSCR           Return to the "player" screen
+*
+* #2 'L' Load another file
+*
+LDNEXT B    @LDSCR            Return to the "loader" screen
+*
+* #3 'Q' Quit the program
+*
+QUIT   LI   R0,VDPPAB+64      Point to the safe area in VDP for PAB
+       LI   R1,CALLBO         Point to the 2byte RAMBO PAB in CPU
+       LI   R2,2              Length of the PAB to write to VDP
+       BLWP @VMBW             Write the PAB to VDP memory
+       MOV  R0,@POINTR        Make sure DSR knows where the PAB is
+       SETO @>834C            Turn RAMBO OS to turn off all pages!
+       BLWP @DSRLNK           SHUT DOWN THE RAMBO SYSTEM
+       DATA >A                *
+       BLWP @0                Quit to the TI title screen
+*
+* #4 'P' Play the loaded sound file via TI PIO port
+*
+PLYPIO BLWP @WRTSCR           Display the "playing" message
+       DATA PLAY
+       BL   @SAVPAD           Save PAD into a safe buffer
+       BL   @PLYLD            Load up the correct TI PIO player!
+       DATA PLDPIO
+       LI   R10,PLYTBL        Point to start of the PLYTBL!
+       LI   R8,GENMAP+2       Point to the Geneve Memory Mapper
+       MOVB *R8,R7            Save current Geneve DSR page into R7
+       MOVB @GENDSR,*R8       Switch Geneve over to TI99 DSR mode!
+       SBO  0                 Turn on the PIO
+       SBO  7                 Turn on the LED
+       SBZ  1                 Make sure PIO in OUTPUT mode
+       BL   @FSTPLY           Run the fast player in PAD
+       SBZ  7                 Turn off the LED
+       SBZ  0                 Turn off the PIO
+       MOVB R7,*R8            Switch Geneve back to normal DSR mode!
+       BL   @PLAYER           Try to return if SPACE not being held down!
+       JMP  PLYPIO            SPACE, play it again sam!
+*
+* #5 'S' Play the loaded sound file via TI SOUND CHIP
+*
+PLYSND BLWP @WRTSCR           Display the "playing" message
+       DATA PLAY
+       BL   @SAVPAD           Save PAD into a safe buffer
+       BL   @PLYLD            Load up the correct SOUND! player
+       DATA PLDSND
+       LI   R10,PLYTBL        Point to start of the PLYTBL!
+       LI   R8,SOUND          Point to the Sound ports on the Console
+       LI   R0,>8001          Load #1 with max. feq
+       MOVB R0,*R8            *
+       SWPB R0                *
+       MOVB R0,*R8            *
+       BL   @FSTPLY           Run the fast player in PAD
+       LI   R0,>9F00          Turn off all sound on #1
+       MOVB R0,*R8            *
+       BL   @PLAYER           Try to return if SPACE not being held down!
+       JMP  PLYPIO            SPACE, play it again sam!
+*
+* Return from playing a sound file either PIO or CHIP
+*
+PLAYER MOV  R11,@PLAYRB+2     Save the return addr. for a "maybe" return
+       BL   @RSTPAD           Restore PAD from the safe buffer
+       MOV  @MEMTYP,R0        Fetch type of memory in use!
+       CI   R0,2              Check if VDP player in use
+       JEQ  PLAYRV            Yep, so return to normal page 0 of VDP!
+       CI   R0,3              Check if RAMBO player in use
+       JNE  PLAYRA            Nope, so exit back to the "playing" screen
+       LI   R0,VDPPAB+64      Point to the safe area in VDP for PAB
+       LI   R1,CALLBO         Point to the 2byte RAMBO PAB in CPU
+       LI   R2,2              Length of the PAB to write to VDP
+       BLWP @VMBW             Write the PAB to VDP memory
+       MOV  R0,@POINTR        Make sure DSR knows where the PAB is
+       SETO @>834C            Turn RAMBO OS to turn off all pages!
+       BLWP @DSRLNK           SHUT DOWN THE RAMBO SYSTEM
+       DATA >A                *
+       JMP  PLAYRA            Check if "space" is being used!
+PLAYRV BL   @PGZERO           Only if VDP mode active!
+PLAYRA BLWP @KSCAN            Scan the keyboard
+       CB   @KEYVAL,@SPACE    Check if key being pressed is a SPACE?
+       JNE  PLAYRC            Nope, so return to the playing screen!
+PLAYRB B    @>0000            Yep, so "play it again, Sam!"
+PLAYRC B    @PLYSCR           Return to the playing screen

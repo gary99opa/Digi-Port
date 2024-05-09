@@ -1,0 +1,164 @@
+******************************************************************
+* ABSP-DATA    v1.03.9109.14  Data, Text, and Byte's for prog.   *
+******************************************************************
+*                                                                *
+* Source Published: 05/09/2024 garyopa.com via TI99.AtariAge.com *
+*                                                                *
+* Copyrighted 1991 by Oasis Pensive Abacutors and WHTechnologies *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+*
+* TI SOUND CHIP table
+*
+SNDTBL DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+       DATA >9E9D,>9C9B,>9A99,>9897,>9695,>9493,>9291
+ 
+* File Format table  : Address of data string to compar for in header
+*                    : De-pol flags, currently 0=normal,other = de-pol
+*                    : Length of data string to totally match
+*                    : Offset into header to start compar at
+*                    : Default delay value for this file format
+*                    : Offset into header that data starts at
+*                    : Address of text string for human display
+FMTTBL DATA FFHDR1,1,3,0,23,2,FFTXT1
+       DATA FFHDR2,0,21,0,23,21,FFTXT2
+       DATA FFHDR3,0,16,0,23,16,FFTXT3
+       DATA FFHDR4,0,16,0,23,16,FFTXT4
+       DATA FFHDR5,0,4,65,23,128,FFTXT5
+       DATA FFHDR6,1,24,40,23,64,FFTXT6
+       DATA FFHDR7,1,32,68,23,10,FFTXT7
+       DATA FFHDR8,1,68,40,23,128,FFTXT8
+       DATA >0000
+FFHDR1 BYTE 'G','P',>00                           #1: Digisound
+FFTXT1 TEXT 'Atari ST "Digisound"   '
+       BYTE 0
+FFHDR2 TEXT 'Creative Voice File'                 #2: Soundblaster
+       BYTE >1A,>1A
+FFTXT2 TEXT 'Creative Voice File    '
+       BYTE 0
+FFHDR3 BYTE >FF,>55,>FF,>AA,>FF,>55,>FF,>AA       #3: Covox 8bit V1
+       BYTE >08,>B4,>00,>00,>00,>00,>00,>00
+FFTXT3 TEXT 'Covox 8bit unsigned #1 '
+       BYTE 0
+FFHDR4 BYTE >FF,>55,>FF,>AA,>FF,>55,>FF,>AA       #4: Covox 8bit V2
+       BYTE >08,>84,>00,>00,>00,>00,>00,>00
+FFTXT4 TEXT 'Covox 8bit unsigned #2 '
+       BYTE 0
+FFHDR5 TEXT 'FSSD'                                #5: MAC 8-bit PCM
+FFTXT5 TEXT 'MAC 8-bit sound files! '
+       BYTE 0
+FFHDR6 BYTE 'N','A','M','E',>00,>00,>00,>0C       #6: PC-Play files
+       TEXT 'PC-PlayV4.10BODY'
+FFTXT6 TEXT 'IBM PC-Play V4.10 file '
+       BYTE 0
+FFHDR7 BYTE 'A','N','N','O',>00,>00,>00,>14       #7: Audio Master
+       TEXT 'Audio Master'
+       BYTE 0,0,0,0,0,0,0,0,'B','O','D','Y'
+FFTXT7 TEXT 'Amiga "Audio Master"   '
+       BYTE 0
+FFHDR8 BYTE 'A','N','N','O',>00,>00,>00,>44       #8: Perfect Sound
+       TEXT 'Recorded with PERFECT SOUND from S'
+       TEXT 'unRize Industries.  (409) 846-1311'
+FFTXT8 TEXT 'Amiga "Perfect Sound"  '
+       BYTE 0
+NOTTXT TEXT 'Unknown 8-bit PCM file '             #x: Unknown type!
+       BYTE 0
+       EVEN
+*
+* Misc. data/text/byte's
+*
+DELAY  DATA 0                 "Inputed" delay is stored here!
+MEMTYP DATA 0                 1=24K/32K,2=VDP,3=RAMBO
+MAXPAG DATA 0                 1or2=24K/32K,7or11=VDP,other=RAMBO
+PAGSIZ DATA 0                 64=RAMBO,128=VDP,192=24K/32K
+PLRFLG DATA 0                 Setting of de-pol flag,etc.
+HEXA   DATA 10                For use in the ASCNUM program
+CURPAT DATA >FFFF,>FFFF,>FFFF,>FFFF     Cursor pattern for #127!
+VDPTBL DATA >018E,>00AD,>028E,>00AD,>038E,>00AD,>048E,>00AD
+       DATA >058E,>00AD,>068E,>00AD,>078E,>00AD
+       DATA >008E,>60AD,>018E,>60AD,>028E,>60AD,>038E,>60AD
+TITMNU DATA MNU24K,'11',MNUVDP,'22',MNURAM,'33',0
+PLYMNU DATA CHGDLY,'Dd',LDNEXT,'Ll',QUIT,'Qq'
+       DATA PLYPIO,'Pp',PLYSND,'Ss',0
+TITLE  DATA BEEP,0,TITSCR,128,TIT1,352,TIT2,416,TIT3
+       DATA 737,TITEND,-1
+CATSCR DATA BEEP,0,TITSCR,128,TIT1,352,CAT1,416,CAT1A
+       DATA 417,FILNAM,447,CAT1B,737,TITEND,-1
+RUNSCR DATA BEEP,0,TITSCR,128,TIT1,352,PLY1,361
+DTYPE  DATA >0000,413,NUMBUF,737,PLYTXT,-1
+READ   DATA 0,737,READTX,-1
+PLAY   DATA 0,737,PLAYTX,-1
+OPNERR DATA HONK,737,OPNTXT,-1
+RADERR DATA HONK,737,RADTXT,-1
+RAMERR DATA HONK,737,RAMTXT,-1
+CALLBO DATA >01B0
+FILPNT DATA VDPPAB+9
+FILPAB DATA >0005,VDPBUF,>8080,0
+FILLEN DATA >0000
+FILNAM TEXT 'DSK1.                         '
+       BYTE 0
+TITSCR TEXT ' DIGI-PORT+ SOUND PLAYER  v1.03 '    0   (0)
+       TEXT '--------------------------------'
+       BYTE 0
+TIT1   TEXT ' Plays DISPLAY/FIXED 128 files, '    128 (4)
+       TEXT ' containing 8bit sounds sampled '
+       TEXT ' at fixed "kHz" speed, via your '
+       TEXT ' TI RS232/PIO card with special '
+       TEXT ' attached "black box" hardware. '
+       BYTE 0
+TIT2   TEXT ' SELECT TYPE OF MEMORY TO USE:  '    352 (11)
+       BYTE 0
+TIT3   TEXT ' 1 for 24K/32K CPU RAM memory   '    416 (13)
+       TEXT ' 2 for 128K/192K VDP RAM memory '
+       TEXT ' 3 for RAMBO extended memory    '
+       BYTE 0
+CAT1   TEXT ' INPUT filename of sound file:  '    352
+       BYTE 0
+CAT1A  TEXT '>'                                   416 <417>
+       BYTE 0
+CAT1B  TEXT '<'                                   447
+       BYTE 0
+PLY1   TEXT ' FORMAT: ______________________ '    352 <361>
+       TEXT ' LENGTH: _________    DELAY: __ '        <413>
+       BYTE 0
+TITEND TEXT '(C)1991 by OPA  (Beta Version)'      737
+       BYTE 0
+READTX TEXT 'Reading file... Please Wait...'      737
+       BYTE 0
+PLAYTX TEXT 'Playing sound.. Please Listen!'      737
+       BYTE 0
+OPNTXT TEXT 'OPEN ERROR! : Any key to exit.'      737
+       BYTE 0
+RADTXT TEXT 'READ ERROR! : Any key to exit.'      737
+       BYTE 0
+PLYTXT TEXT 'Q)uit L)oad D)elay P)lay S)nd!'      737
+       BYTE 0
+RAMTXT TEXT 'RAM NOT FOUND: Any key to exit'      737
+       BYTE 0
+NUMBUF TEXT '          '      Buffer used by NUMASC sub-program
+       BYTE 0
+THREE  BYTE 3                 Used to switch to keyboard mode #3
+EOFERR BYTE >05               Flag byte for "end of file" errors
+GENDSR BYTE >BA               Page value in Geneve for TI99 DSR!
+DEVAL1 BYTE 127               De-pol values
+DEVAL2 BYTE 255               De-pol values

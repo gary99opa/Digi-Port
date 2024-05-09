@@ -1,0 +1,179 @@
+******************************************************************
+* ABSP-SUBS    v1.03.9109.14  Common subs-programs used in prog. *
+******************************************************************
+*                                                                *
+* Source Published: 05/09/2024 garyopa.com via TI99.AtariAge.com *
+*                                                                *
+* Copyrighted 1991 by Oasis Pensive Abacutors and WHTechnologies *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+****************************** DATA PASSED: Address of a "menu" table
+* SELECT BRANCH VIA KEYPRESS * TABLE USED: addr.,'xx' = Where 'xx' is
+****************************** the two keypresses to check. ZERO=end!
+MENU   MOV  *R11+,R10         Fetch address of "menu" table
+MENU1  BLWP @KSCAN            Wait for a new key press
+       MOVB @STATUS,R0        *
+       JEQ  MENU1             *
+       MOV  R10,R1            Got one, so start at first entry in table
+MENU2  MOV  *R1+,R11          Fetch branch address of next entry
+       JEQ  MENU1             If ZERO, then at end, invalid key, wait!!
+       CB   @KEYVAL,*R1+      Check if this was the key pressed?
+       JEQ  MENU3             Yep, so branch to the selected program
+       CB   @KEYVAL,*R1+      Nope, so check the alt. key value?
+       JNE  MENU2             Not that either, so check next entry!
+MENU3  RT                     MATCHED!, so branch to selected addr.!
+ 
+***************************
+* RETURN TO PAGE 0 OF VDP *
+***************************
+PGZERO LI   R0,>0E00          Switch to normal VDP ram block
+       BLWP @VWTR
+       LI   R0,>2D00          Switch to normal VDP ram type
+       BLWP @VWTR
+       RT                     RETURN TO THE CALLING PROGRAM
+ 
+*************************
+* Save/Restore PAD area *
+*************************
+SAVPAD LI   R0,FSTPLY-2       Save PAD into a safe buffer
+       LI   R1,PADBUF         *
+       JMP  SAVPAE            Jump to the common move section
+RSTPAD LI   R0,PADBUF         Restore PAD from the safe buffer
+       LI   R1,FSTPLY-2       *
+SAVPAE LI   R2,192            Length of the PAD to save/restore
+RSTPAE MOV  *R0+,*R1+         save/restore a word of the PAD
+       DECT R2                Check if finished?
+       JNE  RSTPAE            Nope, so move some more
+       RT                     RETURN TO THE CALLING PROGRAM
+ 
+************************** DATA PASSED: Label of MEMTYP table to use
+* LOAD PLAYER TO FASTRAM *
+**************************
+PLYLD  MOV  @MEMTYP,R4        Get current memory type: 1=24K,2=VDP,3=RAMBO
+       DEC  R4                Minus 1 since it starts at number 1!
+       SLA  R4,3              Mpy by 8 because of 4 words per type!
+       A    *R11+,R4          Add starting table addr. to the index!
+       MOV  *R4+,R1           Fetch address of player in CPU memory!
+       MOV  *R4+,R2           Fetch length of player to load into PAD
+       MOV  *R4+,R3           Fetch JMP x???NX value >10FC or >10
+       LI   R0,FSTPLY-2       Point to the start of FASTRAM safe area
+PLYLD1 MOV  *R1+,*R0+         Move a word of the player into FASTRAM
+       DECT R2                Check if finished?
+       JNE  PLYLD1            Nope, so move some more!
+       MOV  @DELAY,R2         Fetch delay wanted (equals # of NOP's)
+       JEQ  PLYLD3            If ZERO, skip over adding of NOP's
+PLYLD2 CLR  *R0+              Add a fast-NOP to the player program
+       DEC  R3                For each NOP added, move JMP x down one!
+       DEC  R2                Check if finished
+       JNE  PLYLD2            Nope, so add some more!
+PLYLD3 MOV  R3,*R0+           Delay added, now install the return JMP!!
+       RT                     DONE!, RETURN TO THE CALLING PROGRAM!
+ 
+**********************************************
+* TI PIO Workspace Map: JMP xPLYNX = >10FC   *
+*                                            *
+*  R7,R8  = Geneve Memory Mapper Use Only    *
+*  R0,R9  = (internal use by fast player)    *
+* R10,R11 = PLYTBL pointer / Return address  *
+* R12,R13 = CRU card addr. / PIO port addr.  *
+* R14,R15 = VDP read data  / VDP write addr. *
+**********************************************
+PLDPIO DATA KPLYRT,KPLYLN,>10FC,>0000
+       DATA VPLYRT,VPLYLN,>10FC,>0000
+       DATA RPLYRT,RPLYLN,>10FC,>0000
+ 
+KPLYRT RT                     24K TI PIO FAST PLAYER
+KPLYPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  KPLYRT            If ZERO, then the end, so exit player!
+       MOV  *R10+,R0          Get address to start reading data from
+KPLYNX MOVB *R0+,*R13         Play a byte of the sound via PIO port
+       DEC  R9                Check if block is finished?
+       JEQ  KPLYPG            Yep, so skip delay and fetch next block!
+KPLYLN EQU  $-KPLYRT          Calc length of above, add delay and JMP
+ 
+VPLYRT RT                     VDP TI PIO FAST PLAYER
+VPLYPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  VPLYRT            If ZERO, then the end, so exit player!
+       MOVB *R10+,*R15        Write out new VDP R14
+       MOVB *R10+,*R15        *
+       MOVB *R10+,*R15        Write out new VDP R45
+       MOVB *R10+,*R15        *
+       CLR  R0                Start at the beginning of the 16K block
+       MOVB R0,*R15           Write out new VDP read address
+       MOVB R0,*R15           *
+VPLYNX MOVB *R14,*R13         Play a byte of the sound via PIO port
+       DEC  R9                Check if block is finished?
+       JEQ  VPLYPG            Yep, so skip delay and fetch next block!
+VPLYLN EQU  $-VPLYRT          Calc length of above, add delay and JMP
+ 
+RPLYRT RT                     RAMBO TI PIO FAST PLAYER
+RPLYPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  RPLYRT            If ZERO, then the end, so exit player!
+       MOV  R12,R0            Save "CRU card addr." because of RAMBO
+       MOV  *R10+,R12         Fetch CRU card addr. of RAMBO to use!
+       LDCR *R10+,0           Fetch & Select RAMBO page wanted!
+       MOV  R0,R12            Restore "CRU card addr." of PIO port
+       LI   R0,SNDRAM         Point to the start of RAMBO memory page
+RPLYNX MOVB *R0+,*R13         Play a byte of the sound via PIO port
+       DEC  R9                Check if block is finished?
+       JEQ  RPLYPG            Yep, so skip delay and fetch next block!
+RPLYLN EQU  $-RPLYRT          Calc length of above, add delay and JMP
+ 
+**********************************************
+* SOUND! Workspace Map: JMP xPLYNX = >10F9   *
+*                                            *
+*  R7,R8  = table indexer  / Sound address   *
+*  R0,R9  = (internal use by fast player)    *
+* R10,R11 = PLYTBL pointer / Return address  *
+* R12,R13 = CRU card addr. / PIO port addr.  *
+* R14,R15 = VDP read data  / VDP write addr. *
+**********************************************
+PLDSND DATA KSNDRT,KSNDLN,>10F9,>0000
+       DATA VSNDRT,VSNDLN,>10F9,>0000
+       DATA RSNDRT,RSNDLN,>10F9,>0000
+ 
+KSNDRT RT                     24K SOUND! FAST PLAYER
+KSNDPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  KSNDRT            If ZERO, then the end, so exit player!
+       MOV  *R10+,R0          Get address to start reading data from
+KSNDNX MOVB *R0+,R7           Fetch a byte of the sound to play
+       SRL  R7,8              Make it a word
+       MOVB @SNDTBL(R7),*R8   Play the correct volume via the sound chip!
+       DEC  R9                Check if block is finished?
+       JEQ  KSNDPG            Yep, so skip delay and fetch next block!
+KSNDLN EQU  $-KSNDRT          Calc length of above, add delay and JMP
+ 
+VSNDRT RT                     VDP SOUND! FAST PLAYER
+VSNDPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  VSNDRT            If ZERO, then the end, so exit player!
+       MOVB *R10+,*R15        Write out new VDP R14
+       MOVB *R10+,*R15        *
+       MOVB *R10+,*R15        Write out new VDP R45
+       MOVB *R10+,*R15        *
+       CLR  R0                Start at the beginning of the 16K block
+       MOVB R0,*R15           Write out new VDP read address
+       MOVB R0,*R15           *
+VSNDNX MOVB *R14,R7           Fetch a byte of the sound to play
+       SRL  R7,8              Make it a word
+       MOVB @SNDTBL(R7),*R8   Play the correct volume via the sound chip!
+       DEC  R9                Check if block is finished?
+       JEQ  VSNDPG            Yep, so skip delay and fetch next block!
+VSNDLN EQU  $-VSNDRT          Calc length of above, add delay and JMP
+ 
+RSNDRT RT                     RAMBO SOUND! FAST PLAYER
+RSNDPG MOV  *R10+,R9          Fetch number of bytes in this block
+       JEQ  RSNDRT            If ZERO, then the end, so exit player!
+       MOV  R12,R0            Save "CRU card addr." because of RAMBO
+       MOV  *R10+,R12         Fetch CRU card addr. of RAMBO to use!
+       LDCR *R10+,0           Fetch & Select RAMBO page wanted!
+       MOV  R0,R12            Restore "CRU card addr." of PIO port
+       LI   R0,SNDRAM         Point to the start of RAMBO memory page
+RSNDNX MOVB *R0+,R7           Fetch a byte of the sound to play
+       SRL  R7,8              Make it a word
+       MOVB @SNDTBL(R7),*R8   Play the correct volume via the sound chip!
+       DEC  R9                Check if block is finished?
+       JEQ  RSNDPG            Yep, so skip delay and fetch next block!
+RSNDLN EQU  $-RSNDRT          Calc length of above, add delay and JMP
