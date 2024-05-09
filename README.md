@@ -29,4 +29,4 @@ Millions of sounds are available on BBS's and the Internet. Start listening to y
 * ABSP-BLWP -> Commonly Used BLWP Libraries!
 * ABSP-DATA -> Data Block after the Program!
 
-* AtariAge Release Page: https://forums.atariage.com/topic/366229-release-digi-port-audio-byte-sound-player-v103-beta-by-opa-whtech/
+AtariAge Release Page: https://forums.atariage.com/topic/366229-release-digi-port-audio-byte-sound-player-v103-beta-by-opa-whtech/
